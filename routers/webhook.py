@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Request, Depends
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models.conversa import Conversa
-from models.orcamento import Orcamento
-import uuid
+from twilio.twiml.messaging_response import MessagingResponse
 
 router = APIRouter()
 
@@ -16,51 +16,59 @@ def get_db():
 
 @router.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
+    form = await request.form()
 
-        telefone = data.get("telefone")
-        mensagem = data.get("mensagem")
+    telefone = form.get("From")
+    mensagem = form.get("Body")
 
-        if not telefone or not mensagem:
-            return {
-                "erro": "Payload inválido",
-                "esperado": {
-                    "telefone": "string",
-                    "mensagem": "string"
-                }
-            }
+    twiml = MessagingResponse()
 
-        conversa = db.query(Conversa).filter_by(
-            telefone_whatsapp=telefone
-        ).first()
+    if not telefone or not mensagem or not mensagem.strip():
+        twiml.message("Erro ao processar mensagem ❌")
+        return Response(str(twiml), media_type="application/xml")
 
-        if not conversa:
-            conversa = Conversa(
-                telefone_whatsapp=telefone,
-                estado="aguardando_produto"
-            )
-            db.add(conversa)
-            db.commit()
-            return {"resposta": "Olá! Qual produto você deseja?"}
+    telefone = telefone.replace("whatsapp:", "")
+    mensagem = mensagem.strip()
 
-        if conversa.estado == "aguardando_produto":
-            conversa.estado = "aguardando_quantidade"
-            db.commit()
-            return {"resposta": "Qual a quantidade?"}
+    conversa = db.query(Conversa).filter_by(
+        telefone_whatsapp=telefone
+    ).first()
 
-        if conversa.estado == "aguardando_quantidade":
-            conversa.estado = "aguardando_prazo"
-            db.commit()
-            return {"resposta": "Qual o prazo desejado?"}
+    if not conversa:
+        conversa = Conversa(
+            telefone_whatsapp=telefone,
+            estado="aguardando_produto"
+        )
+        db.add(conversa)
+        db.commit()
 
-        if conversa.estado == "aguardando_prazo":
-            conversa.estado = "finalizado"
-            db.commit()
-            return {"resposta": "Perfeito! Seu pedido foi enviado para análise."}
+        twiml.message("Olá! 👋 Qual produto você deseja?")
+        return Response(str(twiml), media_type="application/xml")
 
-        return {"resposta": "Fluxo finalizado"}
+    if conversa.estado == "aguardando_produto":
+        conversa.estado = "aguardando_quantidade"
+        db.commit()
 
-    except Exception as e:
-        print("❌ ERRO:", e)
-        return {"erro": "Erro interno", "detail": str(e)}
+        twiml.message("Qual a quantidade?")
+        return Response(str(twiml), media_type="application/xml")
+
+    if conversa.estado == "aguardando_quantidade":
+        conversa.estado = "aguardando_prazo"
+        db.commit()
+
+        twiml.message("Qual o prazo desejado?")
+        return Response(str(twiml), media_type="application/xml")
+
+    if conversa.estado == "aguardando_prazo":
+        conversa.estado = "finalizado"
+        db.commit()
+
+        twiml.message("Perfeito! ✅ Pedido enviado para análise.")
+        return Response(str(twiml), media_type="application/xml")
+
+    # reset automático
+    conversa.estado = "aguardando_produto"
+    db.commit()
+
+    twiml.message("Vamos começar novamente 😊 Qual produto?")
+    return Response(str(twiml), media_type="application/xml")
