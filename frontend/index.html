@@ -17,29 +17,34 @@
       <div class="container-blue">
 
         <div class="login-box">
-<div class="login-content">
-<img src="./assets/logo.png" alt="Meu Refúgio" class="logo">
+<div class="login-content" id="login-content">
+  <img src="./assets/logo.png" alt="Meu Refúgio" class="logo">
 
-            <p class="subtitle">acesse sua conta</p>
+  <p class="subtitle">acesse sua conta</p>
 
-           <label>usuário</label>
-<input type="email" id="email" placeholder="email@email.com">
+  <label>usuário</label>
+  <input type="email" id="email" placeholder="email@email.com">
 
-<label>senha</label>
-<input type="password" id="senha" placeholder="********">
+  <label>senha</label>
+  <input type="password" id="senha" placeholder="********">
 
-<button class="btn-primary" onclick="login()">
-  Avançar
-</button>
+  <button class="btn-primary" onclick="login()">
+    Avançar
+  </button>
 
-<button class="link" onclick="mostrarEsqueciSenha()">
-  Esqueci minha senha
-</button>
+  <!-- 🔹 NOVO: botão de cadastro -->
+  <button class="link" onclick="cadastrar()">
+    Criar conta
+  </button>
 
-<p id="erro-login" style="color:red; margin-top:12px; text-align: center;"></p>
+  <button class="link" onclick="mostrarEsqueciSenha()">
+    Esqueci minha senha
+  </button>
 
-          </div>
-        </div>
+  <p id="erro-login" style="color:red; margin-top:12px; text-align: center;"></p>
+</div>
+
+</div>
 
         <div class="side-text">
           <h2>Que bom ter você aqui!</h2>
@@ -54,68 +59,140 @@
 
   </div>
 <script>
-  const loginContent = document.querySelector('.login-content');
+  const container = document.getElementById("login-content");
 
-  const loginHTML = loginContent.innerHTML;
+  function telaLogin() {
+    container.innerHTML = `
+      <img src="./assets/logo.png" class="logo">
 
-  function mostrarEsqueciSenha() {
-    loginContent.innerHTML = `
-      <img src="./assets/logo.png" alt="Meu Refúgio" class="logo">
+      <p class="subtitle">acesse sua conta</p>
+
+      <label>email</label>
+      <input type="email" id="email" placeholder="email@email.com">
+
+      <label>senha</label>
+      <input type="password" id="senha" placeholder="********">
+
+      <button class="btn-primary" onclick="login()">Avançar</button>
+
+      <button class="link" onclick="telaCadastro()">Criar conta</button>
+      <button class="link" onclick="telaRecuperar()">Esqueci minha senha</button>
+
+      <p id="erro-login" style="color:red; margin-top:12px; text-align:center;"></p>
+    `;
+  }
+
+  function telaCadastro() {
+    container.innerHTML = `
+      <img src="./assets/logo.png" class="logo">
+
+      <p class="subtitle">criar conta</p>
+
+      <label>email</label>
+      <input type="email" id="email" placeholder="email@email.com">
+
+      <label>senha</label>
+      <input type="password" id="senha" placeholder="mínimo 6 caracteres">
+
+      <button class="btn-primary" onclick="cadastrar()">Cadastrar</button>
+
+      <button class="link" onclick="telaLogin()">Já tenho conta</button>
+
+      <p id="erro-login" style="color:red; margin-top:12px; text-align:center;"></p>
+    `;
+  }
+
+  function telaRecuperar() {
+    container.innerHTML = `
+      <img src="./assets/logo.png" class="logo">
 
       <p class="subtitle">recuperar acesso</p>
 
       <label>email</label>
-      <input class="email2" type="email" placeholder="email@email.com">
+      <input type="email" id="email" placeholder="email@email.com">
 
-      <button class="btn-primary">Enviar link</button>
+      <button class="btn-primary" onclick="recuperarSenha()">Enviar link</button>
 
-      <button class="link" onclick="voltarLogin()">
-        Voltar para login
-      </button>
+      <button class="link" onclick="telaLogin()">Voltar</button>
+
+      <p id="erro-login" style="color:red; margin-top:12px; text-align:center;"></p>
     `;
   }
 
-  function voltarLogin() {
-    loginContent.innerHTML = loginHTML;
-  }
+  // inicia na tela de login
+  telaLogin();
 </script>
-<script>
-  async function login() {
+
+<!-- FIREBASE -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD7lf9vlH-nL-m-8mUgD08SCbPqLTthftQ",
+    authDomain: "flowchat-1a9ea.firebaseapp.com",
+    projectId: "flowchat-1a9ea",
+    storageBucket: "flowchat-1a9ea.firebasestorage.app",
+    messagingSenderId: "640169787612",
+    appId: "1:640169787612:web:fc1ad829473a61fd043419"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  // 🔐 LOGIN
+  window.login = async function () {
     const email = document.getElementById("email").value;
     const senha = document.getElementById("senha").value;
     const erro = document.getElementById("erro-login");
 
-    erro.innerText = "";
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+      window.location.href = "admin.html";
+    } catch (e) {
+      erro.innerText = "Email ou senha inválidos";
+    }
+  };
 
-    if (!email || !senha) {
-      erro.innerText = "Preencha email e senha";
+  // 🆕 CADASTRO
+  window.cadastrar = async function () {
+    const email = document.getElementById("email").value;
+    const senha = document.getElementById("senha").value;
+    const erro = document.getElementById("erro-login");
+
+    if (senha.length < 6) {
+      erro.innerText = "A senha precisa ter no mínimo 6 caracteres";
       return;
     }
 
     try {
-      const response = await fetch("http://localhost:8000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha })
-      });
-
-      if (!response.ok) {
-        throw new Error();
-      }
-
-      const data = await response.json();
-
-      localStorage.setItem("token", data.access_token);
-
+      await createUserWithEmailAndPassword(auth, email, senha);
       window.location.href = "admin.html";
-
-    } catch {
-      erro.innerText = "Email ou senha inválidos";
+    } catch (e) {
+      erro.innerText = "Erro ao criar conta. Email já existe?";
     }
-  }
+  };
 
+  // 🔁 RECUPERAR SENHA
+  window.recuperarSenha = async function () {
+    const email = document.getElementById("email").value;
+    const erro = document.getElementById("erro-login");
 
+    try {
+      await sendPasswordResetEmail(auth, email);
+      erro.style.color = "green";
+      erro.innerText = "Email de recuperação enviado ✅";
+    } catch (e) {
+      erro.innerText = "Erro ao enviar email";
+    }
+  };
 </script>
+
 
 
 </body>

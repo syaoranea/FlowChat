@@ -1,21 +1,14 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request
 from fastapi.responses import Response
-from sqlalchemy.orm import Session
-from database import SessionLocal
-from models.conversa import Conversa
 from twilio.twiml.messaging_response import MessagingResponse
+from database import supabase  # seu cliente Supabase já criado
 
 router = APIRouter()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+TABLE_CONVERSA = "conversas"  # nome da tabela no Supabase
 
 @router.post("/webhook")
-async def webhook(request: Request, db: Session = Depends(get_db)):
+async def webhook(request: Request):
     form = await request.form()
 
     telefone = form.get("From")
@@ -30,45 +23,37 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
     telefone = telefone.replace("whatsapp:", "")
     mensagem = mensagem.strip()
 
-    conversa = db.query(Conversa).filter_by(
-        telefone_whatsapp=telefone
-    ).first()
+    # busca conversa no Supabase
+    response = supabase.table(TABLE_CONVERSA).select("*").eq("telefone_whatsapp", telefone).execute()
+    conversa_data = response.data[0] if response.data else None
 
-    if not conversa:
-        conversa = Conversa(
-            telefone_whatsapp=telefone,
-            estado="aguardando_produto"
-        )
-        db.add(conversa)
-        db.commit()
-
+    # cria nova conversa se não existir
+    if not conversa_data:
+        supabase.table(TABLE_CONVERSA).insert({
+            "telefone_whatsapp": telefone,
+            "estado": "aguardando_produto"
+        }).execute()
         twiml.message("Olá! 👋 Qual produto você deseja?")
         return Response(str(twiml), media_type="application/xml")
 
-    if conversa.estado == "aguardando_produto":
-        conversa.estado = "aguardando_quantidade"
-        db.commit()
+    estado = conversa_data["estado"]
 
+    if estado == "aguardando_produto":
+        supabase.table(TABLE_CONVERSA).update({"estado": "aguardando_quantidade"}).eq("telefone_whatsapp", telefone).execute()
         twiml.message("Qual a quantidade?")
         return Response(str(twiml), media_type="application/xml")
 
-    if conversa.estado == "aguardando_quantidade":
-        conversa.estado = "aguardando_prazo"
-        db.commit()
-
+    if estado == "aguardando_quantidade":
+        supabase.table(TABLE_CONVERSA).update({"estado": "aguardando_prazo"}).eq("telefone_whatsapp", telefone).execute()
         twiml.message("Qual o prazo desejado?")
         return Response(str(twiml), media_type="application/xml")
 
-    if conversa.estado == "aguardando_prazo":
-        conversa.estado = "finalizado"
-        db.commit()
-
+    if estado == "aguardando_prazo":
+        supabase.table(TABLE_CONVERSA).update({"estado": "finalizado"}).eq("telefone_whatsapp", telefone).execute()
         twiml.message("Perfeito! ✅ Pedido enviado para análise.")
         return Response(str(twiml), media_type="application/xml")
 
     # reset automático
-    conversa.estado = "aguardando_produto"
-    db.commit()
-
+    supabase.table(TABLE_CONVERSA).update({"estado": "aguardando_produto"}).eq("telefone_whatsapp", telefone).execute()
     twiml.message("Vamos começar novamente 😊 Qual produto?")
     return Response(str(twiml), media_type="application/xml")

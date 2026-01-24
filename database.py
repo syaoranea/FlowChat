@@ -1,18 +1,14 @@
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from supabase import create_client, Client
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+SUPABASE_URL = "https://lnefzhascwowivljwgee.supabase.co"
+SUPABASE_KEY = "sb_publishable_jhjF1zVN7FG-ouby95N3dQ_O3ZMZPtQ"
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True
-)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
-
-Base = declarative_base()
+def get_table_data(table_name: str, limit: int = 10):
+    try:
+        response = supabase.table(table_name).select("*").limit(limit).execute()
+        return response.data
+    except Exception as e:
+        print(f"❌ ERRO ao buscar tabela '{table_name}':", e)
+        return None
