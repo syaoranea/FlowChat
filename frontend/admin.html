@@ -40,6 +40,9 @@
                 <a href="#" onclick="switchTab('orcamentos')" class="nav-btn flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition-all" id="btn-orcamentos">
                     <i class="fas fa-calculator w-5"></i> Orçamentos
                 </a>
+                <a href="#" onclick="switchTab('categorias')" class="nav-btn flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition-all" id="btn-categorias">
+                    <i class="fas fa-tags w-5"></i> Categorias
+                </a>
             </nav>
             <div class="p-4 border-t border-slate-800">
     <button id="btn-sair" class="flex items-center gap-3 p-3 w-full text-red-400 hover:bg-slate-800 rounded-lg transition-all">
@@ -80,6 +83,10 @@
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4" id="card-orcamentos">
                         <div class="p-4 bg-amber-100 text-amber-600 rounded-lg"><i class="fas fa-calculator text-2xl"></i></div>
                         <div><p class="text-sm text-gray-500">Orçamentos</p><p class="text-2xl font-bold" id="count-orcamentos">0</p></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4" id="card-categorias">
+                        <div class="p-4 bg-indigo-100 text-indigo-600 rounded-lg"><i class="fas fa-tags text-2xl"></i></div>
+                        <div><p class="text-sm text-gray-500">Categorias</p><p class="text-2xl font-bold" id="count-categorias">0</p></div>
                     </div>
                 </div>
             </div>
@@ -177,6 +184,29 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100" id="table-orcamentos"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Categorias Content -->
+            <div id="categorias" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Categorias</h2>
+                    <button onclick="abrirCadastro('categorias')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Nova Categoria
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="p-4 font-semibold text-gray-600">ID</th>
+                                <th class="p-4 font-semibold text-gray-600">Nome</th>
+                                <th class="p-4 font-semibold text-gray-600">Descrição</th>
+                                <th class="p-4 font-semibold text-gray-600 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100" id="table-categorias"></tbody>
                     </table>
                 </div>
             </div>
@@ -387,6 +417,20 @@ window.abrirCadastro = async function (tipo, docId = null) {
             </div>
         `;
     }
+    
+    // CATEGORIAS
+    else if (tipo === "categorias") {
+        fields.innerHTML = `
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input name="nome" placeholder="Nome da categoria" class="w-full border p-2 rounded-lg outline-blue-500" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea name="descricao" placeholder="Descrição da categoria" class="w-full border p-2 rounded-lg outline-blue-500" rows="3"></textarea>
+            </div>
+        `;
+    }
 
     // 🔥 PREENCHER DADOS NA EDIÇÃO
     if (docId && currentUserUid) {
@@ -558,7 +602,31 @@ function iniciarOrcamentos() {
     });
 }
 
-window.excluirRegistro = async function(colecao, docId) {
+function iniciarCategorias() {
+    const tenantCollection = getTenantCollection("categorias");
+    onSnapshot(tenantCollection, (snap) => {
+        document.getElementById("table-categorias").innerHTML = snap.docs.map(d => {
+            const data = d.data();
+            return `
+                <tr>
+                    <td class="p-4">${d.id}</td>
+                    <td class="p-4">${data.nome || ''}</td>
+                    <td class="p-4">${data.descricao || ''}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="abrirCadastro('categorias', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="excluirRegistro('categorias', '${d.id}')" class="text-red-600 hover:text-red-800" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        }).join("") || '<tr><td colspan="4" class="p-8 text-center text-gray-500">Nenhuma categoria cadastrada</td></tr>';
+        atualizarContador("categorias", "count-categorias");
+    });
+}
+
+window.excluirRegistro= async function(colecao, docId) {
     if (confirm('Tem certeza que deseja excluir este registro?')) {
         try {
             await deleteDoc(doc(getTenantCollection(colecao), docId));
@@ -582,6 +650,7 @@ onAuthStateChanged(auth, (user) => {
     iniciarProdutos();
     iniciarClientes();
     iniciarOrcamentos();
+    iniciarCategorias();
 });
 
 /* =======================
