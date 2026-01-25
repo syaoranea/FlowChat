@@ -284,6 +284,8 @@ let currentUserUid = null;
 let deleteColecao = null;
 let deleteDocId = null;
 let categoriasCache = [];
+let produtosCache = [];
+let produtoItemCount = 1;
 
 window.switchTab = function (tabId) {
     document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
@@ -341,6 +343,59 @@ window.confirmarExclusao = async () => {
         } catch (error) {
             alert('Erro ao excluir: ' + error.message);
         }
+    }
+};
+
+// Funcoes para orcamento com multiplos produtos
+window.adicionarProdutoOrcamento = () => {
+    const container = document.getElementById('produtos-container');
+    const produtosOptions = produtosCache.map(prod => 
+        `<option value="${prod.id}" data-preco="${prod.preco}">${prod.nome} - R$ ${Number(prod.preco || 0).toFixed(2).replace('.', ',')}</option>`
+    ).join('');
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'produto-item flex gap-2 mb-2';
+    newItem.innerHTML = `
+        <select name="produtoId_${produtoItemCount}" class="flex-1 border p-2 rounded-lg outline-blue-500 produto-select" required onchange="calcularTotalOrcamento()">
+            <option value="">Selecione um produto...</option>
+            ${produtosOptions}
+        </select>
+        <input name="quantidade_${produtoItemCount}" type="number" min="1" value="1" placeholder="Qtd" class="w-20 border p-2 rounded-lg outline-blue-500 quantidade-input" required onchange="calcularTotalOrcamento()">
+        <button type="button" onclick="removerProdutoOrcamento(this)" class="text-red-600 hover:text-red-800 px-2">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    container.appendChild(newItem);
+    produtoItemCount++;
+};
+
+window.removerProdutoOrcamento = (btn) => {
+    const item = btn.closest('.produto-item');
+    item.remove();
+    calcularTotalOrcamento();
+};
+
+window.calcularTotalOrcamento = () => {
+    let total = 0;
+    const selects = document.querySelectorAll('.produto-select');
+    const quantidades = document.querySelectorAll('.quantidade-input');
+    
+    selects.forEach((select, index) => {
+        if (select.value) {
+            const produto = produtosCache.find(p => p.id === select.value);
+            if (produto) {
+                const quantidade = parseInt(quantidades[index]?.value) || 1;
+                total += produto.preco * quantidade;
+            }
+        }
+    });
+    
+    const frete = parseFloat(document.querySelector('input[name="frete"]')?.value) || 0;
+    total += frete;
+    
+    const valorInput = document.querySelector('input[name="valor"]');
+    if (valorInput) {
+        valorInput.value = total.toFixed(2);
     }
 };
 
@@ -442,16 +497,39 @@ window.abrirCadastro = async function (tipo, docId = null) {
         `;
     }
     
-    // ORÇAMENTOS
+    // ORCAMENTOS
     else if (tipo === "orcamentos") {
+        const produtosOptions = produtosCache.map(prod => 
+            `<option value="${prod.id}" data-preco="${prod.preco}">${prod.nome} - R$ ${Number(prod.preco || 0).toFixed(2).replace('.', ',')}</option>`
+        ).join('');
+        
         fields.innerHTML = `
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input name="cliente" placeholder="Nome do cliente" class="w-full border p-2 rounded-lg outline-blue-500" required>
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Produtos</label>
+                <div id="produtos-container">
+                    <div class="produto-item flex gap-2 mb-2">
+                        <select name="produtoId_0" class="flex-1 border p-2 rounded-lg outline-blue-500 produto-select" required onchange="calcularTotalOrcamento()">
+                            <option value="">Selecione um produto...</option>
+                            ${produtosOptions}
+                        </select>
+                        <input name="quantidade_0" type="number" min="1" value="1" placeholder="Qtd" class="w-20 border p-2 rounded-lg outline-blue-500 quantidade-input" required onchange="calcularTotalOrcamento()">
+                    </div>
+                </div>
+                <button type="button" onclick="adicionarProdutoOrcamento()" class="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
+                    <i class="fas fa-plus"></i> Adicionar mais produto
+                </button>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor do Frete (R$)</label>
+                <input name="frete" type="number" step="0.01" placeholder="0.00" value="0" class="w-full border p-2 rounded-lg outline-blue-500" onchange="calcularTotalOrcamento()">
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Valor Total (R$)</label>
-                <input name="valor" type="number" step="0.01" placeholder="0.00" class="w-full border p-2 rounded-lg outline-blue-500" required>
+                <input name="valor" type="number" step="0.01" placeholder="0.00" class="w-full border p-2 rounded-lg outline-blue-500 bg-gray-100" readonly>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -478,6 +556,55 @@ window.abrirCadastro = async function (tipo, docId = null) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
                 <input name="telefone" placeholder="(11) 99999-9999" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <input name="email" type="email" placeholder="cliente@email.com" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rua</label>
+                <input name="rua" placeholder="Rua, numero, complemento" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                <input name="cep" placeholder="00000-000" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                <input name="cidade" placeholder="Cidade" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select name="estado" class="w-full border p-2 rounded-lg outline-blue-500">
+                    <option value="">Selecione o estado...</option>
+                    <option value="AC">Acre</option>
+                    <option value="AL">Alagoas</option>
+                    <option value="AP">Amapa</option>
+                    <option value="AM">Amazonas</option>
+                    <option value="BA">Bahia</option>
+                    <option value="CE">Ceara</option>
+                    <option value="DF">Distrito Federal</option>
+                    <option value="ES">Espirito Santo</option>
+                    <option value="GO">Goias</option>
+                    <option value="MA">Maranhao</option>
+                    <option value="MT">Mato Grosso</option>
+                    <option value="MS">Mato Grosso do Sul</option>
+                    <option value="MG">Minas Gerais</option>
+                    <option value="PA">Para</option>
+                    <option value="PB">Paraiba</option>
+                    <option value="PR">Parana</option>
+                    <option value="PE">Pernambuco</option>
+                    <option value="PI">Piaui</option>
+                    <option value="RJ">Rio de Janeiro</option>
+                    <option value="RN">Rio Grande do Norte</option>
+                    <option value="RS">Rio Grande do Sul</option>
+                    <option value="RO">Rondonia</option>
+                    <option value="RR">Roraima</option>
+                    <option value="SC">Santa Catarina</option>
+                    <option value="SP">Sao Paulo</option>
+                    <option value="SE">Sergipe</option>
+                    <option value="TO">Tocantins</option>
+                </select>
             </div>
         `;
     }
@@ -591,6 +718,15 @@ function iniciarUsuarios() {
 function iniciarProdutos() {
     const tenantCollection = getTenantCollection("produtos");
     onSnapshot(tenantCollection, (snap) => {
+        // Atualiza o cache de produtos
+        produtosCache = snap.docs.map(d => ({
+            id: d.id,
+            nome: d.data().nome || '',
+            preco: Number(d.data().preco || 0),
+            estoque: d.data().estoque || 0,
+            categoriaId: d.data().categoriaId || ''
+        }));
+        
         document.getElementById("table-produtos").innerHTML = snap.docs.map(d => {
             const data = d.data();
             const nomeEscapado = (data.nome || '').replace(/'/g, "\\'");
