@@ -40,6 +40,9 @@
                 <a href="#" onclick="switchTab('orcamentos')" class="nav-btn flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition-all" id="btn-orcamentos">
                     <i class="fas fa-calculator w-5"></i> Orçamentos
                 </a>
+                <a href="#" onclick="switchTab('categorias')" class="nav-btn flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition-all" id="btn-categorias">
+                    <i class="fas fa-tags w-5"></i> Categorias
+                </a>
             </nav>
             <div class="p-4 border-t border-slate-800">
     <button id="btn-sair" class="flex items-center gap-3 p-3 w-full text-red-400 hover:bg-slate-800 rounded-lg transition-all">
@@ -81,6 +84,10 @@
                         <div class="p-4 bg-amber-100 text-amber-600 rounded-lg"><i class="fas fa-calculator text-2xl"></i></div>
                         <div><p class="text-sm text-gray-500">Orçamentos</p><p class="text-2xl font-bold" id="count-orcamentos">0</p></div>
                     </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4" id="card-categorias">
+                        <div class="p-4 bg-indigo-100 text-indigo-600 rounded-lg"><i class="fas fa-tags text-2xl"></i></div>
+                        <div><p class="text-sm text-gray-500">Categorias</p><p class="text-2xl font-bold" id="count-categorias">0</p></div>
+                    </div>
                 </div>
             </div>
 
@@ -113,7 +120,7 @@
             <!-- Produtos Content -->
             <div id="produtos" class="tab-content">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <h2 class="text-2xl font-bold">Catálogo de Produtos</h2>
+                    <h2 class="text-2xl font-bold">Catalogo de Produtos</h2>
                     <button onclick="abrirCadastro('produtos')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
                         <i class="fas fa-plus"></i> Novo Produto
                     </button>
@@ -124,9 +131,10 @@
                             <tr>
                                 <th class="p-4 font-semibold text-gray-600">SKU</th>
                                 <th class="p-4 font-semibold text-gray-600">Nome</th>
-                                <th class="p-4 font-semibold text-gray-600">Preço</th>
+                                <th class="p-4 font-semibold text-gray-600">Categoria</th>
+                                <th class="p-4 font-semibold text-gray-600">Preco</th>
                                 <th class="p-4 font-semibold text-gray-600">Estoque</th>
-                                <th class="p-4 font-semibold text-gray-600 text-right">Ações</th>
+                                <th class="p-4 font-semibold text-gray-600 text-right">Acoes</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100" id="table-produtos"></tbody>
@@ -180,6 +188,29 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Categorias Content -->
+            <div id="categorias" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Categorias</h2>
+                    <button onclick="abrirCadastro('categorias')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Nova Categoria
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="p-4 font-semibold text-gray-600">ID</th>
+                                <th class="p-4 font-semibold text-gray-600">Nome</th>
+                                <th class="p-4 font-semibold text-gray-600">Descrição</th>
+                                <th class="p-4 font-semibold text-gray-600 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100" id="table-categorias"></tbody>
+                    </table>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -219,6 +250,29 @@
     </div>
 </div>
 
+<!-- Modal de Confirmacao de Exclusao -->
+<div id="delete-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Confirmar Exclusao</h3>
+            <p id="delete-message" class="text-gray-600 mb-6">Tem certeza que deseja excluir este registro? Esta acao nao pode ser desfeita.</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" 
+                        class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium">
+                    Cancelar
+                </button>
+                <button onclick="confirmarExclusao()" 
+                        class="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium">
+                    Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script type="module">
 /* =======================
@@ -227,6 +281,11 @@
 let abaAtual = null;
 let docAtual = null;
 let currentUserUid = null;
+let deleteColecao = null;
+let deleteDocId = null;
+let categoriasCache = [];
+let produtosCache = [];
+let produtoItemCount = 1;
 
 window.switchTab = function (tabId) {
     document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
@@ -259,6 +318,85 @@ window.showSuccessModal = (message = "Operação realizada com sucesso!") => {
 
 window.closeSuccessModal = () => {
     closeModal("success-modal");
+};
+
+// Modal de Exclusao
+window.openDeleteModal = (colecao, docId, nomeRegistro = 'este registro') => {
+    deleteColecao = colecao;
+    deleteDocId = docId;
+    document.getElementById("delete-message").textContent = `Tem certeza que deseja excluir "${nomeRegistro}"? Esta acao nao pode ser desfeita.`;
+    openModal("delete-modal");
+};
+
+window.closeDeleteModal = () => {
+    closeModal("delete-modal");
+    deleteColecao = null;
+    deleteDocId = null;
+};
+
+window.confirmarExclusao = async () => {
+    if (deleteColecao && deleteDocId) {
+        try {
+            await deleteDoc(doc(getTenantCollection(deleteColecao), deleteDocId));
+            closeDeleteModal();
+            showSuccessModal('Registro excluido com sucesso!');
+        } catch (error) {
+            alert('Erro ao excluir: ' + error.message);
+        }
+    }
+};
+
+// Funcoes para orcamento com multiplos produtos
+window.adicionarProdutoOrcamento = () => {
+    const container = document.getElementById('produtos-container');
+    const produtosOptions = produtosCache.map(prod => 
+        `<option value="${prod.id}" data-preco="${prod.preco}">${prod.nome} - R$ ${Number(prod.preco || 0).toFixed(2).replace('.', ',')}</option>`
+    ).join('');
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'produto-item flex gap-2 mb-2';
+    newItem.innerHTML = `
+        <select name="produtoId_${produtoItemCount}" class="flex-1 border p-2 rounded-lg outline-blue-500 produto-select" required onchange="calcularTotalOrcamento()">
+            <option value="">Selecione um produto...</option>
+            ${produtosOptions}
+        </select>
+        <input name="quantidade_${produtoItemCount}" type="number" min="1" value="1" placeholder="Qtd" class="w-20 border p-2 rounded-lg outline-blue-500 quantidade-input" required onchange="calcularTotalOrcamento()">
+        <button type="button" onclick="removerProdutoOrcamento(this)" class="text-red-600 hover:text-red-800 px-2">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    container.appendChild(newItem);
+    produtoItemCount++;
+};
+
+window.removerProdutoOrcamento = (btn) => {
+    const item = btn.closest('.produto-item');
+    item.remove();
+    calcularTotalOrcamento();
+};
+
+window.calcularTotalOrcamento = () => {
+    let total = 0;
+    const selects = document.querySelectorAll('.produto-select');
+    const quantidades = document.querySelectorAll('.quantidade-input');
+    
+    selects.forEach((select, index) => {
+        if (select.value) {
+            const produto = produtosCache.find(p => p.id === select.value);
+            if (produto) {
+                const quantidade = parseInt(quantidades[index]?.value) || 1;
+                total += produto.preco * quantidade;
+            }
+        }
+    });
+    
+    const frete = parseFloat(document.querySelector('input[name="frete"]')?.value) || 0;
+    total += frete;
+    
+    const valorInput = document.querySelector('input[name="valor"]');
+    if (valorInput) {
+        valorInput.value = total.toFixed(2);
+    }
 };
 
 /* =======================
@@ -310,13 +448,24 @@ window.abrirCadastro = async function (tipo, docId = null) {
     
     // PRODUTOS
     if (tipo === "produtos") {
+        const categoriasOptions = categoriasCache.map(cat => 
+            `<option value="${cat.id}">${cat.nome}</option>`
+        ).join('');
+        
         fields.innerHTML = `
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                 <input name="nome" placeholder="Nome do produto" class="w-full border p-2 rounded-lg outline-blue-500" required>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                <select name="categoriaId" class="w-full border p-2 rounded-lg outline-blue-500" required>
+                    <option value="">Selecione uma categoria...</option>
+                    ${categoriasOptions}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Preco (R$)</label>
                 <input name="preco" type="number" step="0.01" placeholder="0.00" class="w-full border p-2 rounded-lg outline-blue-500" required>
             </div>
             <div>
@@ -348,16 +497,39 @@ window.abrirCadastro = async function (tipo, docId = null) {
         `;
     }
     
-    // ORÇAMENTOS
+    // ORCAMENTOS
     else if (tipo === "orcamentos") {
+        const produtosOptions = produtosCache.map(prod => 
+            `<option value="${prod.id}" data-preco="${prod.preco}">${prod.nome} - R$ ${Number(prod.preco || 0).toFixed(2).replace('.', ',')}</option>`
+        ).join('');
+        
         fields.innerHTML = `
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input name="cliente" placeholder="Nome do cliente" class="w-full border p-2 rounded-lg outline-blue-500" required>
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Produtos</label>
+                <div id="produtos-container">
+                    <div class="produto-item flex gap-2 mb-2">
+                        <select name="produtoId_0" class="flex-1 border p-2 rounded-lg outline-blue-500 produto-select" required onchange="calcularTotalOrcamento()">
+                            <option value="">Selecione um produto...</option>
+                            ${produtosOptions}
+                        </select>
+                        <input name="quantidade_0" type="number" min="1" value="1" placeholder="Qtd" class="w-20 border p-2 rounded-lg outline-blue-500 quantidade-input" required onchange="calcularTotalOrcamento()">
+                    </div>
+                </div>
+                <button type="button" onclick="adicionarProdutoOrcamento()" class="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
+                    <i class="fas fa-plus"></i> Adicionar mais produto
+                </button>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor do Frete (R$)</label>
+                <input name="frete" type="number" step="0.01" placeholder="0.00" value="0" class="w-full border p-2 rounded-lg outline-blue-500" onchange="calcularTotalOrcamento()">
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Valor Total (R$)</label>
-                <input name="valor" type="number" step="0.01" placeholder="0.00" class="w-full border p-2 rounded-lg outline-blue-500" required>
+                <input name="valor" type="number" step="0.01" placeholder="0.00" class="w-full border p-2 rounded-lg outline-blue-500 bg-gray-100" readonly>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -384,6 +556,69 @@ window.abrirCadastro = async function (tipo, docId = null) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
                 <input name="telefone" placeholder="(11) 99999-9999" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <input name="email" type="email" placeholder="cliente@email.com" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rua</label>
+                <input name="rua" placeholder="Rua, numero, complemento" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                <input name="cep" placeholder="00000-000" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                <input name="cidade" placeholder="Cidade" class="w-full border p-2 rounded-lg outline-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select name="estado" class="w-full border p-2 rounded-lg outline-blue-500">
+                    <option value="">Selecione o estado...</option>
+                    <option value="AC">Acre</option>
+                    <option value="AL">Alagoas</option>
+                    <option value="AP">Amapa</option>
+                    <option value="AM">Amazonas</option>
+                    <option value="BA">Bahia</option>
+                    <option value="CE">Ceara</option>
+                    <option value="DF">Distrito Federal</option>
+                    <option value="ES">Espirito Santo</option>
+                    <option value="GO">Goias</option>
+                    <option value="MA">Maranhao</option>
+                    <option value="MT">Mato Grosso</option>
+                    <option value="MS">Mato Grosso do Sul</option>
+                    <option value="MG">Minas Gerais</option>
+                    <option value="PA">Para</option>
+                    <option value="PB">Paraiba</option>
+                    <option value="PR">Parana</option>
+                    <option value="PE">Pernambuco</option>
+                    <option value="PI">Piaui</option>
+                    <option value="RJ">Rio de Janeiro</option>
+                    <option value="RN">Rio Grande do Norte</option>
+                    <option value="RS">Rio Grande do Sul</option>
+                    <option value="RO">Rondonia</option>
+                    <option value="RR">Roraima</option>
+                    <option value="SC">Santa Catarina</option>
+                    <option value="SP">Sao Paulo</option>
+                    <option value="SE">Sergipe</option>
+                    <option value="TO">Tocantins</option>
+                </select>
+            </div>
+        `;
+    }
+    
+    // CATEGORIAS
+    else if (tipo === "categorias") {
+        fields.innerHTML = `
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input name="nome" placeholder="Nome da categoria" class="w-full border p-2 rounded-lg outline-blue-500" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea name="descricao" placeholder="Descrição da categoria" class="w-full border p-2 rounded-lg outline-blue-500" rows="3"></textarea>
             </div>
         `;
     }
@@ -449,12 +684,13 @@ function atualizarContador(collectionName, countId) {
     });
 }
 
-// 🔥 USUÁRIOS (AGORA FUNCIONA!)
+// USUARIOS
 function iniciarUsuarios() {
     const tenantCollection = getTenantCollection("usuarios");
     onSnapshot(tenantCollection, (snap) => {
         document.getElementById("table-usuarios").innerHTML = snap.docs.map(d => {
             const data = d.data();
+            const nomeEscapado = (data.nome || '').replace(/'/g, "\\'");
             return `
                 <tr>
                     <td class="p-4">${d.id}</td>
@@ -469,12 +705,12 @@ function iniciarUsuarios() {
                         <button onclick="abrirCadastro('usuarios', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="excluirRegistro('usuarios', '${d.id}')" class="text-red-600 hover:text-red-800" title="Excluir">
+                        <button onclick="openDeleteModal('usuarios', '${d.id}', '${nomeEscapado}')" class="text-red-600 hover:text-red-800" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>`;
-        }).join("") || '<tr><td colspan="5" class="p-8 text-center text-gray-500">Nenhum usuário cadastrado</td></tr>';
+        }).join("") || '<tr><td colspan="5" class="p-8 text-center text-gray-500">Nenhum usuario cadastrado</td></tr>';
         atualizarContador("usuarios", "count-usuarios");
     });
 }
@@ -482,24 +718,37 @@ function iniciarUsuarios() {
 function iniciarProdutos() {
     const tenantCollection = getTenantCollection("produtos");
     onSnapshot(tenantCollection, (snap) => {
+        // Atualiza o cache de produtos
+        produtosCache = snap.docs.map(d => ({
+            id: d.id,
+            nome: d.data().nome || '',
+            preco: Number(d.data().preco || 0),
+            estoque: d.data().estoque || 0,
+            categoriaId: d.data().categoriaId || ''
+        }));
+        
         document.getElementById("table-produtos").innerHTML = snap.docs.map(d => {
             const data = d.data();
+            const nomeEscapado = (data.nome || '').replace(/'/g, "\\'");
+            const categoria = categoriasCache.find(c => c.id === data.categoriaId);
+            const categoriaNome = categoria ? categoria.nome : '-';
             return `
                 <tr>
                     <td class="p-4">${d.id}</td>
                     <td class="p-4">${data.nome || ''}</td>
+                    <td class="p-4"><span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">${categoriaNome}</span></td>
                     <td class="p-4 font-semibold text-green-600">R$ ${Number(data.preco || 0).toFixed(2).replace('.', ',')}</td>
                     <td class="p-4">${data.estoque || 0}</td>
                     <td class="p-4 text-right">
-                        <button onclick="abrirCadastro('produtos', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                        <button onclick="abrirCadastro('produtos', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="excluirRegistro('produtos', '${d.id}')" class="text-red-600 hover:text-red-800">
+                        <button onclick="openDeleteModal('produtos', '${d.id}', '${nomeEscapado}')" class="text-red-600 hover:text-red-800" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>`;
-        }).join("") || '<tr><td colspan="5" class="p-8 text-center text-gray-500">Nenhum produto cadastrado</td></tr>';
+        }).join("") || '<tr><td colspan="6" class="p-8 text-center text-gray-500">Nenhum produto cadastrado</td></tr>';
         atualizarContador("produtos", "count-produtos");
     });
 }
@@ -509,16 +758,17 @@ function iniciarClientes() {
     onSnapshot(tenantCollection, (snap) => {
         document.getElementById("table-clientes").innerHTML = snap.docs.map(d => {
             const data = d.data();
+            const nomeEscapado = (data.nome || '').replace(/'/g, "\\'");
             return `
                 <tr>
                     <td class="p-4">${data.nome || ''}</td>
                     <td class="p-4">${data.documento || ''}</td>
                     <td class="p-4">${data.telefone || ''}</td>
                     <td class="p-4 text-right">
-                        <button onclick="abrirCadastro('clientes', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                        <button onclick="abrirCadastro('clientes', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="excluirRegistro('clientes', '${d.id}')" class="text-red-600 hover:text-red-800">
+                        <button onclick="openDeleteModal('clientes', '${d.id}', '${nomeEscapado}')" class="text-red-600 hover:text-red-800" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -533,6 +783,7 @@ function iniciarOrcamentos() {
     onSnapshot(tenantCollection, (snap) => {
         document.getElementById("table-orcamentos").innerHTML = snap.docs.map(d => {
             const data = d.data();
+            const clienteEscapado = (data.cliente || '').replace(/'/g, "\\'");
             return `
                 <tr>
                     <td class="p-4">${d.id}</td>
@@ -545,29 +796,51 @@ function iniciarOrcamentos() {
                         }">${data.status || ''}</span>
                     </td>
                     <td class="p-4 text-right">
-                        <button onclick="abrirCadastro('orcamentos', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                        <button onclick="abrirCadastro('orcamentos', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="excluirRegistro('orcamentos', '${d.id}')" class="text-red-600 hover:text-red-800">
+                        <button onclick="openDeleteModal('orcamentos', '${d.id}', '${clienteEscapado}')" class="text-red-600 hover:text-red-800" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>`;
-        }).join("") || '<tr><td colspan="5" class="p-8 text-center text-gray-500">Nenhum orçamento cadastrado</td></tr>';
+        }).join("") || '<tr><td colspan="5" class="p-8 text-center text-gray-500">Nenhum orcamento cadastrado</td></tr>';
         atualizarContador("orcamentos", "count-orcamentos");
     });
 }
 
-window.excluirRegistro = async function(colecao, docId) {
-    if (confirm('Tem certeza que deseja excluir este registro?')) {
-        try {
-            await deleteDoc(doc(getTenantCollection(colecao), docId));
-            showSuccessModal('Registro excluído com sucesso!');
-        } catch (error) {
-            alert('Erro ao excluir: ' + error.message);
-        }
-    }
-};
+function iniciarCategorias() {
+    const tenantCollection = getTenantCollection("categorias");
+    onSnapshot(tenantCollection, (snap) => {
+        // Atualiza o cache de categorias
+        categoriasCache = snap.docs.map(d => ({
+            id: d.id,
+            nome: d.data().nome || '',
+            descricao: d.data().descricao || ''
+        }));
+        
+        document.getElementById("table-categorias").innerHTML = snap.docs.map(d => {
+            const data = d.data();
+            const nomeEscapado = (data.nome || '').replace(/'/g, "\\'");
+            return `
+                <tr>
+                    <td class="p-4">${d.id}</td>
+                    <td class="p-4">${data.nome || ''}</td>
+                    <td class="p-4">${data.descricao || ''}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="abrirCadastro('categorias', '${d.id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="openDeleteModal('categorias', '${d.id}', '${nomeEscapado}')" class="text-red-600 hover:text-red-800" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        }).join("") || '<tr><td colspan="4" class="p-8 text-center text-gray-500">Nenhuma categoria cadastrada</td></tr>';
+        atualizarContador("categorias", "count-categorias");
+    });
+}
+
 
 /* =======================
    LOGIN (COM USUÁRIOS!)
@@ -582,6 +855,7 @@ onAuthStateChanged(auth, (user) => {
     iniciarProdutos();
     iniciarClientes();
     iniciarOrcamentos();
+    iniciarCategorias();
 });
 
 /* =======================
