@@ -64,7 +64,7 @@ FIREBASE_PROJECT_ID=flowchat-72383
 FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 
 # Twilio Configuration
-TWILIO_ACCOUNT_SID=seu_auth_token_aqui
+TWILIO_ACCOUNT_SID=seu_account_sid_aqui
 TWILIO_AUTH_TOKEN=seu_auth_token_aqui
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 

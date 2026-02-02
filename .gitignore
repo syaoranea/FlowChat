@@ -1,79 +1,29 @@
-# ===============================
+# Environment
+.env
+firebase-credentials.json
+
 # Python
-# ===============================
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
 *.so
+.Python
+env/
+venv/
+.venv/
 *.egg-info/
 dist/
 build/
 
-# ===============================
-# Virtual Environment
-# ===============================
-venv/
-.venv/
-env/
-ENV/
-
-# ===============================
-# Environment variables / secrets
-# ===============================
-.env
-.env.*
-*.env
-firebase-credentials.json
-serviceAccountKey.json
-
-# ===============================
-# Logs
-# ===============================
-*.log
-logs/
-*.out
-
-# ===============================
-# OS files
-# ===============================
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# ===============================
-# IDE / Editors
-# ===============================
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# ===============================
-# FastAPI / Uvicorn
-# ===============================
-uvicorn.log
-gunicorn.log
+# Logs
+*.log
 
-# ===============================
-# Testing / Coverage
-# ===============================
-.pytest_cache/
-.coverage
-htmlcov/
-
-# ===============================
-# Jupyter
-# ===============================
-.ipynb_checkpoints/
-
-# ===============================
-# Node (caso use scripts JS)
-# ===============================
-node_modules/
-
-# ===============================
-# Misc
-# ===============================
-*.sqlite3
-*.db
+# OS
+.DS_Store
+Thumbs.db
