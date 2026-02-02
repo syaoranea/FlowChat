@@ -1,21 +1,19 @@
 """
 WhatsApp E-commerce Chatbot - Main Application
-FastAPI backend com webhook para Twilio WhatsApp.
+FastAPI backend com webhook para Z-API WhatsApp.
 """
 import logging
 import sys
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, Form, Request, Response, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.config import get_settings
 from app.handlers.message_handler import message_handler
-from app.services.twilio_service import twilio_service
-
-from twilio.twiml.messaging_response import MessagingResponse
+from app.services.zapi_service import zapi_service
 
 
 # Configuração de logging
@@ -35,29 +33,37 @@ async def lifespan(app: FastAPI):
     """Gerencia ciclo de vida da aplicação."""
     logger.info("🚀 Iniciando WhatsApp E-commerce Bot...")
     logger.info(f"📱 Empresa: {settings.company_name}")
-    logger.info(f"📞 WhatsApp From: {settings.twilio_whatsapp_from}")
+    logger.info(f"📞 Z-API Instance: {settings.zapi_instance_id[:8]}..." if settings.zapi_instance_id else "📞 Z-API: não configurado")
     yield
     logger.info("👋 Encerrando aplicação...")
 
 
 app = FastAPI(
     title="WhatsApp E-commerce Chatbot",
-    description="Backend para chatbot WhatsApp de e-commerce com Twilio e Firebase",
-    version="1.0.0",
+    description="Backend para chatbot WhatsApp de e-commerce com Z-API e Firebase",
+    version="2.0.0",
     lifespan=lifespan
 )
 
 
 # ==================== MODELOS ====================
 
-class WebhookMessage(BaseModel):
-    """Modelo para mensagem recebida via webhook."""
-    From: str
-    Body: str
-    MessageSid: Optional[str] = None
-    AccountSid: Optional[str] = None
-    To: Optional[str] = None
-    NumMedia: Optional[str] = "0"
+class ZAPIWebhookMessage(BaseModel):
+    """Modelo para mensagem recebida via webhook Z-API."""
+    phone: str
+    messageId: Optional[str] = None
+    fromMe: bool = False
+    momment: Optional[int] = None  # timestamp
+    type: Optional[str] = None  # ReceivedCallback, MessageStatusCallback, etc
+    text: Optional[dict] = None  # {"message": "texto"}
+    # Outros tipos de mensagem
+    image: Optional[dict] = None
+    audio: Optional[dict] = None
+    video: Optional[dict] = None
+    document: Optional[dict] = None
+    sticker: Optional[dict] = None
+    contact: Optional[dict] = None
+    location: Optional[dict] = None
 
 
 class TestMessage(BaseModel):
@@ -75,7 +81,8 @@ async def root():
         "status": "online",
         "service": "WhatsApp E-commerce Chatbot",
         "company": settings.company_name,
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "provider": "Z-API"
     }
 
 
@@ -85,99 +92,128 @@ async def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/zapi/status")
+async def zapi_status():
+    """Verifica status da conexão Z-API."""
+    status = zapi_service.get_status()
+    return status
+
+
 @app.post("/webhook/whatsapp")
-async def whatsapp_webhook(
-    From: str = Form(...),
-    Body: str = Form(...),
-    MessageSid: Optional[str] = Form(None),
-    AccountSid: Optional[str] = Form(None),
-    To: Optional[str] = Form(None),
-    NumMedia: str = Form("0")
-):
+async def whatsapp_webhook(request: Request):
     """
-    Webhook para receber mensagens do WhatsApp via Twilio.
+    Webhook para receber mensagens do WhatsApp via Z-API.
     
-    Twilio envia dados como form-urlencoded.
-    Retorna TwiML para resposta.
+    Z-API envia dados como JSON.
+    Formato esperado:
+    {
+        "phone": "5511999999999",
+        "fromMe": false,
+        "messageId": "...",
+        "text": {"message": "texto da mensagem"},
+        "type": "ReceivedCallback"
+    }
     """
-    logger.info(f"📨 Mensagem recebida de {From}: {Body}")
-    
     try:
+        data = await request.json()
+        
+        # Log para debug
+        logger.info(f"📨 Webhook recebido: {data}")
+        
+        # Ignora mensagens enviadas pelo próprio bot
+        if data.get("fromMe", False):
+            logger.info("⏭️ Ignorando mensagem própria (fromMe=true)")
+            return JSONResponse(content={"status": "ignored", "reason": "fromMe"})
+        
+        # Ignora callbacks de status
+        callback_type = data.get("type", "")
+        if callback_type in ["MessageStatusCallback", "StatusCallback", "DeliveryCallback"]:
+            logger.info(f"⏭️ Ignorando callback de status: {callback_type}")
+            return JSONResponse(content={"status": "ignored", "reason": "status_callback"})
+        
+        # Extrai número do remetente
+        phone = data.get("phone", "")
+        if not phone:
+            logger.warning("⚠️ Webhook sem número de telefone")
+            return JSONResponse(content={"status": "error", "reason": "no_phone"}, status_code=400)
+        
+        # Extrai mensagem de texto
+        message = ""
+        if data.get("text") and isinstance(data["text"], dict):
+            message = data["text"].get("message", "")
+        elif data.get("text") and isinstance(data["text"], str):
+            message = data["text"]
+        
+        # Se não for texto, pode ser mídia
+        if not message:
+            if data.get("image"):
+                message = "[Imagem recebida]"
+            elif data.get("audio"):
+                message = "[Áudio recebido]"
+            elif data.get("video"):
+                message = "[Vídeo recebido]"
+            elif data.get("document"):
+                message = "[Documento recebido]"
+            elif data.get("sticker"):
+                message = "[Figurinha recebida]"
+            elif data.get("contact"):
+                message = "[Contato recebido]"
+            elif data.get("location"):
+                message = "[Localização recebida]"
+            else:
+                logger.warning(f"⚠️ Tipo de mensagem não suportado: {data}")
+                return JSONResponse(content={"status": "ignored", "reason": "unsupported_type"})
+        
+        logger.info(f"📨 Mensagem de {phone}: {message}")
+        
         # Processa mensagem
         response_text = message_handler.process_message(
-            phone=From,
-            message=Body
+            phone=phone,
+            message=message
         )
         
-        logger.info(f"📤 Resposta para {From}: {response_text[:100]}...")
+        logger.info(f"📤 Resposta para {phone}: {response_text[:100]}...")
         
-        # Envia resposta via Twilio (opcional, pode usar TwiML)
-        twiml = MessagingResponse()
-        twiml.message(response_text)
-
-        return PlainTextResponse(
-            content=str(twiml),
-            status_code=200,
-            media_type="text/xml"
-        )
+        # Envia resposta via Z-API
+        message_id = zapi_service.send_message(phone, response_text)
+        
+        if message_id:
+            return JSONResponse(content={
+                "status": "success",
+                "messageId": message_id
+            })
+        else:
+            logger.error(f"❌ Falha ao enviar resposta para {phone}")
+            return JSONResponse(content={
+                "status": "error",
+                "reason": "send_failed"
+            }, status_code=500)
         
     except Exception as e:
-        # 🔴 LOG COMPLETO PRA DEBUG
-        logger.error(
-            f"❌ Erro ao processar mensagem de {From}: {e}",
-            exc_info=True
+        logger.error(f"❌ Erro ao processar webhook: {e}", exc_info=True)
+        return JSONResponse(
+            content={"status": "error", "reason": str(e)},
+            status_code=500
         )
-
-        # 🟢 RESPOSTA AMIGÁVEL (TwiML VÁLIDO)
-        twiml = MessagingResponse()
-        twiml.message(
-            "Ops 😅 tive um probleminha aqui. "
-            "Pode tentar novamente em alguns instantes?"
-        )
-
-        return PlainTextResponse(
-            content=str(twiml),
-            status_code=200,          # ⚠️ IMPORTANTE: ainda 200
-            media_type="text/xml"
-        )
-
-@app.post("/webhook/whatsapp/status")
-async def whatsapp_status_webhook(request: Request):
-    """
-    Webhook para receber status de mensagens do Twilio.
-    """
-    form_data = await request.form()
-    
-    message_sid = form_data.get("MessageSid")
-    message_status = form_data.get("MessageStatus")
-    
-    logger.info(f"📊 Status update - SID: {message_sid}, Status: {message_status}")
-    
-    return PlainTextResponse("OK")
 
 
 @app.post("/api/test/message")
 async def test_message(data: TestMessage):
     """
-    Endpoint para testar processamento de mensagens sem Twilio.
+    Endpoint para testar processamento de mensagens sem Z-API.
     Útil para desenvolvimento e debug.
     """
     logger.info(f"🧪 Teste - Phone: {data.phone}, Message: {data.message}")
     
-    # Garante formato correto do telefone
-    phone = data.phone
-    if not phone.startswith("whatsapp:"):
-        phone = f"whatsapp:{phone}"
-    
     try:
         response = message_handler.process_message(
-            phone=phone,
+            phone=data.phone,
             message=data.message
         )
         
         return {
             "success": True,
-            "phone": phone,
+            "phone": data.phone,
             "message_received": data.message,
             "response": response
         }
@@ -190,31 +226,14 @@ async def test_message(data: TestMessage):
 @app.post("/api/send")
 async def send_message(phone: str, message: str):
     """
-    Endpoint para enviar mensagem manualmente.
+    Endpoint para enviar mensagem manualmente via Z-API.
     """
-    if not phone.startswith("whatsapp:"):
-        phone = f"whatsapp:{phone}"
+    message_id = zapi_service.send_message(phone, message)
     
-    sid = twilio_service.send_message(phone, message)
-    
-    if sid:
-        return {"success": True, "message_sid": sid}
+    if message_id:
+        return {"success": True, "message_id": message_id}
     else:
         raise HTTPException(status_code=500, detail="Falha ao enviar mensagem")
-
-
-# ==================== UTILS ====================
-
-def escape_xml(text: str) -> str:
-    """Escapa caracteres especiais para XML."""
-    return (
-        text
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-        .replace("'", "&apos;")
-    )
 
 
 # ==================== MAIN ====================

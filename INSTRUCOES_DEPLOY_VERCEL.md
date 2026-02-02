@@ -1,24 +1,17 @@
 # 📋 Instruções de Deploy na Vercel - FlowChat
 
-## 🔴 Problemas Identificados
+## 🔄 Migração: Twilio → Z-API
 
-### 1. Firebase - Erro "File name too long"
-**Causa:** O código estava tentando usar o JSON das credenciais como nome de arquivo.
+Este projeto agora usa **Z-API** em vez de Twilio para integração com WhatsApp.
 
-**Solução:** Agora o sistema aceita as credenciais Firebase de duas formas:
-- `FIREBASE_CREDENTIALS_PATH`: Caminho para arquivo (desenvolvimento local)
-- `FIREBASE_CREDENTIALS_JSON`: JSON completo das credenciais (recomendado para Vercel)
+### Por que Z-API?
+- ✅ Configuração mais simples e rápida
+- ✅ Usa seu próprio número de WhatsApp
+- ✅ Sem necessidade de aprovação do Meta
+- ✅ Sem restrição de janela de 24h
+- ✅ Custo mais previsível (plano mensal)
 
-### 2. Modo MOCK ativado
-**Causa:** Como o Firebase não inicializava, o sistema entrava em modo MOCK.
-
-**Solução:** Com a correção acima, o Firebase inicializará corretamente.
-
-### 3. Mensagens não enviadas via Twilio
-**Causa:** O webhook está retornando TwiML corretamente, mas o Twilio precisa de:
-- Credenciais válidas configuradas
-- Número de WhatsApp verificado
-- Conta Twilio em modo produção ou sandbox configurado
+Para detalhes sobre Z-API, veja: [INSTRUCOES_ZAPI.md](./INSTRUCOES_ZAPI.md)
 
 ---
 
@@ -32,68 +25,61 @@
 4. Clique em **"Gerar nova chave privada"**
 5. Baixe o arquivo JSON
 
-### Passo 2: Preparar o JSON para a Vercel
+### Passo 2: Preparar o JSON do Firebase para a Vercel
 
-O JSON baixado terá este formato:
-```json
-{
-  "type": "service_account",
-  "project_id": "flowchat-72383",
-  "private_key_id": "abc123...",
-  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-xxx@flowchat-72383.iam.gserviceaccount.com",
-  "client_id": "123456789",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/..."
-}
+**IMPORTANTE:** Converta o JSON para uma única linha antes de colar na Vercel:
+
+```bash
+# Mac
+cat firebase-credentials.json | tr -d '\n' | pbcopy
+
+# Linux
+cat firebase-credentials.json | tr -d '\n' | xclip -selection clipboard
 ```
 
-**IMPORTANTE:** Converta para uma única linha antes de colar na Vercel:
-- Abra o arquivo JSON
-- Remova todas as quebras de linha (deve ficar tudo em uma linha)
-- Ou use este comando no terminal:
-  ```bash
-  cat firebase-credentials.json | tr -d '\n' | pbcopy  # Mac
-  cat firebase-credentials.json | tr -d '\n' | xclip   # Linux
-  ```
+### Passo 3: Obter credenciais da Z-API
 
-### Passo 3: Configurar variáveis na Vercel
+1. Acesse [https://z-api.io](https://z-api.io) e faça login
+2. Clique na sua instância
+3. Copie o **Instance ID** e **Token** da URL da API
+4. Vá em **Segurança** e copie o **Client-Token**
+
+Veja mais detalhes em [INSTRUCOES_ZAPI.md](./INSTRUCOES_ZAPI.md)
+
+### Passo 4: Configurar variáveis na Vercel
 
 Acesse: https://vercel.com/dashboard → Seu projeto → Settings → Environment Variables
-
-Configure as seguintes variáveis:
 
 | Variável | Valor | Descrição |
 |----------|-------|-----------|
 | `FIREBASE_PROJECT_ID` | `flowchat-72383` | ID do projeto Firebase |
 | `FIREBASE_CREDENTIALS_JSON` | `{"type":"service_account",...}` | JSON completo em uma linha |
-| `TWILIO_ACCOUNT_SID` | `ACxxxxxxxxxxxxxxx` | Account SID do Twilio |
-| `TWILIO_AUTH_TOKEN` | `xxxxxxxxxxxxxxxx` | Auth Token do Twilio |
-| `TWILIO_WHATSAPP_FROM` | `whatsapp:+14155238886` | Número do WhatsApp Sandbox |
+| `ZAPI_INSTANCE_ID` | `XXXXXXXXXXXX` | Instance ID da Z-API |
+| `ZAPI_TOKEN` | `YYYYYYYYYYYY` | Token da Z-API |
+| `ZAPI_CLIENT_TOKEN` | `ZZZZZZZZZZZZ` | Client-Token (Security Token) |
 | `COMPANY_NAME` | `Sua Empresa` | Nome da empresa |
 | `LOG_LEVEL` | `INFO` | Nível de log |
 
-### Passo 4: Configurar Twilio
+### Passo 5: Configurar Webhook na Z-API
 
-1. Acesse o [Twilio Console](https://console.twilio.com/)
-2. Vá para **Messaging** → **Try it out** → **Send a WhatsApp message**
-3. Configure o **Sandbox**:
-   - Webhook URL: `https://flow-chat-omega.vercel.app/webhook/whatsapp`
-   - HTTP Method: `POST`
-
-4. Para testar, envie a mensagem de ativação do sandbox para o número do Twilio
+1. Acesse o painel da Z-API
+2. Clique na sua instância → **Webhooks**
+3. Configure a URL do webhook:
+   ```
+   https://seu-projeto.vercel.app/webhook/whatsapp
+   ```
+4. Ative os eventos:
+   - ✅ Mensagens recebidas (ReceivedCallback)
 
 ---
 
-## 🚀 Deploy das Correções
+## 🚀 Deploy
 
 ### Opção 1: Via GitHub (Recomendado)
 
 ```bash
 git add .
-git commit -m "fix: Firebase credentials JSON support for Vercel"
+git commit -m "feat: migrate from Twilio to Z-API"
 git push origin main
 ```
 
@@ -110,54 +96,108 @@ vercel --prod
 
 ## ✅ Verificação
 
-Após o deploy, teste com:
+### 1. Testar endpoint raiz
 
 ```bash
-curl -X POST https://flow-chat-omega.vercel.app/webhook/whatsapp \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "From=whatsapp:+5511999999999&Body=oi"
+curl https://seu-projeto.vercel.app/
 ```
 
-Deve retornar um XML TwiML válido:
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>👋 Olá! Seja bem-vindo(a) à...</Message>
-</Response>
+Deve retornar:
+```json
+{
+  "status": "online",
+  "service": "WhatsApp E-commerce Chatbot",
+  "version": "2.0.0",
+  "provider": "Z-API"
+}
+```
+
+### 2. Testar processamento de mensagem
+
+```bash
+curl -X POST https://seu-projeto.vercel.app/api/test/message \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "5511999999999", "message": "oi"}'
+```
+
+### 3. Verificar status da Z-API
+
+```bash
+curl https://seu-projeto.vercel.app/zapi/status
+```
+
+### 4. Simular webhook Z-API
+
+```bash
+curl -X POST https://seu-projeto.vercel.app/webhook/whatsapp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "5511999999999",
+    "fromMe": false,
+    "messageId": "test123",
+    "text": {"message": "oi"},
+    "type": "ReceivedCallback"
+  }'
 ```
 
 ---
 
-## 📝 Resumo das Mudanças
+## 📝 Estrutura do Projeto
 
-### Arquivos Modificados:
-
-1. **`app/config.py`**
-   - Adicionada variável `firebase_credentials_json`
-
-2. **`app/services/firebase_service.py`**
-   - Método `_initialize_firebase()` agora:
-     - Prioriza `FIREBASE_CREDENTIALS_JSON` (para Vercel)
-     - Fallback para `FIREBASE_CREDENTIALS_PATH` (local)
-     - Fallback para credenciais padrão do ambiente
-
-3. **`.env.example`**
-   - Documentação atualizada com ambas opções
+```
+flowchat_debug/
+├── main.py                      # App FastAPI principal
+├── app/
+│   ├── config.py                # Configurações (variáveis de ambiente)
+│   ├── handlers/
+│   │   ├── message_handler.py   # Processador de mensagens
+│   │   ├── compras_handler.py   # Fluxo de compras
+│   │   ├── orcamento_handler.py # Fluxo de orçamento
+│   │   └── posvenda_handler.py  # Fluxo pós-venda
+│   ├── models/
+│   │   └── conversation.py      # Modelos de dados
+│   └── services/
+│       ├── firebase_service.py  # Serviço Firebase
+│       └── zapi_service.py      # Serviço Z-API (novo!)
+├── .env.example                 # Exemplo de variáveis
+├── INSTRUCOES_ZAPI.md          # Instruções Z-API
+└── INSTRUCOES_DEPLOY_VERCEL.md # Este arquivo
+```
 
 ---
 
 ## 🔍 Troubleshooting
 
-### Firebase ainda não funciona
-- Verifique se o JSON está em uma única linha
-- Certifique-se de que não há caracteres extras (espaços, aspas duplicadas)
-- Verifique os logs na Vercel: `vercel logs` ou no dashboard
+### Z-API não envia mensagens
 
-### Twilio não envia mensagens
-- Verifique se o número está conectado ao sandbox
-- Confirme que o `TWILIO_WHATSAPP_FROM` é o número correto
-- Teste a API do Twilio diretamente pelo console
+1. Verifique se a instância está conectada (QR Code escaneado)
+2. Confirme que as variáveis `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN` estão corretas
+3. Teste o endpoint `/zapi/status` para verificar a conexão
+4. Verifique os logs na Vercel
+
+### Webhook não recebe mensagens
+
+1. Confirme que a URL está correta no painel Z-API
+2. Verifique se os eventos estão ativados (ReceivedCallback)
+3. Teste com o botão "Testar Webhook" no painel Z-API
+
+### Firebase não inicializa
+
+1. Verifique se o JSON está em uma única linha
+2. Certifique-se de que não há caracteres extras
+3. Verifique os logs na Vercel: `vercel logs`
 
 ### Erro 500 no webhook
-- Verifique os logs da Vercel
-- Certifique-se de que todas as variáveis estão configuradas
+
+1. Verifique os logs completos na Vercel
+2. Teste localmente com os mesmos dados
+3. Confirme que todas as variáveis estão configuradas
+
+---
+
+## 🔐 Segurança
+
+- **Nunca commite** credenciais no repositório
+- Use **sempre HTTPS** em produção
+- Configure o **Client-Token** da Z-API
+- Monitore logs para atividades suspeitas

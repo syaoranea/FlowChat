@@ -11,13 +11,13 @@ class Settings(BaseSettings):
     # Firebase
     firebase_project_id: str = "flowchat-72383"
     firebase_credentials_path: str = "./firebase-credentials.json"
-    # NOVA: JSON das credenciais Firebase diretamente (para Vercel)
+    # JSON das credenciais Firebase diretamente (para Vercel)
     firebase_credentials_json: str = ""
     
-    # Twilio
-    twilio_account_sid: str = ""
-    twilio_auth_token: str = ""
-    twilio_whatsapp_from: str = "whatsapp:+14155238886"
+    # Z-API (substitui Twilio)
+    zapi_instance_id: str = ""
+    zapi_token: str = ""
+    zapi_client_token: str = ""  # Security Token (opcional mas recomendado)
     
     # App
     company_name: str = "Minha Empresa"
