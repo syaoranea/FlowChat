@@ -17,6 +17,9 @@ from app.services.twilio_service import twilio_service
 
 from twilio.twiml.messaging_response import MessagingResponse
 
+import asyncio
+
+
 
 # Configuração de logging
 settings = get_settings()
