@@ -88,58 +88,19 @@ async def health_check():
 @app.post("/webhook/whatsapp")
 async def whatsapp_webhook(
     From: str = Form(...),
-    Body: str = Form(...),
-    MessageSid: Optional[str] = Form(None),
-    AccountSid: Optional[str] = Form(None),
-    To: Optional[str] = Form(None),
-    NumMedia: str = Form("0")
+    Body: str = Form(...)
 ):
-    """
-    Webhook para receber mensagens do WhatsApp via Twilio.
-    
-    Twilio envia dados como form-urlencoded.
-    Retorna TwiML para resposta.
-    """
-    logger.info(f"📨 Mensagem recebida de {From}: {Body}")
-    
-    try:
-        # Processa mensagem
-        response_text = message_handler.process_message(
-            phone=From,
-            message=Body
-        )
-        
-        logger.info(f"📤 Resposta para {From}: {response_text[:100]}...")
-        
-        # Envia resposta via Twilio (opcional, pode usar TwiML)
-        twiml = MessagingResponse()
-        twiml.message(response_text)
+    asyncio.create_task(
+        processar_e_responder(From, Body)
+    )
 
-        return PlainTextResponse(
-            content=str(twiml),
-            status_code=200,
-            media_type="text/xml"
-        )
-        
-    except Exception as e:
-        # 🔴 LOG COMPLETO PRA DEBUG
-        logger.error(
-            f"❌ Erro ao processar mensagem de {From}: {e}",
-            exc_info=True
-        )
+    twiml = MessagingResponse()
+    twiml.message("⏳ Processando sua mensagem...")
 
-        # 🟢 RESPOSTA AMIGÁVEL (TwiML VÁLIDO)
-        twiml = MessagingResponse()
-        twiml.message(
-            "Ops 😅 tive um probleminha aqui. "
-            "Pode tentar novamente em alguns instantes?"
-        )
-
-        return PlainTextResponse(
-            content=str(twiml),
-            status_code=200,          # ⚠️ IMPORTANTE: ainda 200
-            media_type="text/xml"
-        )
+    return PlainTextResponse(
+        content=str(twiml),
+        media_type="text/xml"
+    )
 
 @app.post("/webhook/whatsapp/status")
 async def whatsapp_status_webhook(request: Request):
