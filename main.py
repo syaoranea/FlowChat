@@ -15,6 +15,9 @@ from app.config import get_settings
 from app.handlers.message_handler import message_handler
 from app.services.twilio_service import twilio_service
 
+from twilio.twiml.messaging_response import MessagingResponse
+
+
 # Configuração de logging
 settings = get_settings()
 logging.basicConfig(
