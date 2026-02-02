@@ -119,7 +119,10 @@ async def whatsapp_webhook(
         
         return Response(
             content=twiml_response,
-            media_type="application/xml"
+            status_code=200,
+            headers={
+                "Content-Type": "text/xml; charset=utf-8"
+            }
         )
         
     except Exception as e:
