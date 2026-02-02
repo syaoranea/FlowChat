@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     # Firebase
     firebase_project_id: str = "flowchat-72383"
     firebase_credentials_path: str = "./firebase-credentials.json"
+    # NOVA: JSON das credenciais Firebase diretamente (para Vercel)
+    firebase_credentials_json: str = ""
     
     # Twilio
     twilio_account_sid: str = ""

@@ -2,6 +2,7 @@
 Serviço de integração com Firebase/Firestore.
 """
 import logging
+import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import firebase_admin
@@ -38,24 +39,45 @@ class FirebaseService:
         """Inicializa o Firebase Admin SDK."""
         settings = get_settings()
         try:
-            # Tenta inicializar com credenciais do arquivo
             if not firebase_admin._apps:
-                try:
-                    cred = credentials.Certificate(settings.firebase_credentials_path)
+                cred = None
+                
+                # PRIORIDADE 1: JSON das credenciais diretamente (para Vercel)
+                if settings.firebase_credentials_json:
+                    try:
+                        # Tenta parsear o JSON das credenciais
+                        cred_dict = json.loads(settings.firebase_credentials_json)
+                        cred = credentials.Certificate(cred_dict)
+                        logger.info("Firebase: usando credenciais do JSON (variável de ambiente)")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Firebase: erro ao parsear JSON das credenciais: {e}")
+                        raise
+                
+                # PRIORIDADE 2: Arquivo de credenciais (desenvolvimento local)
+                elif settings.firebase_credentials_path:
+                    try:
+                        cred = credentials.Certificate(settings.firebase_credentials_path)
+                        logger.info(f"Firebase: usando arquivo de credenciais: {settings.firebase_credentials_path}")
+                    except FileNotFoundError:
+                        logger.warning(f"Firebase: arquivo não encontrado: {settings.firebase_credentials_path}")
+                
+                # Inicializa o app
+                if cred:
                     firebase_admin.initialize_app(cred, {
                         'projectId': settings.firebase_project_id
                     })
-                except FileNotFoundError:
-                    # Se não encontrar o arquivo, tenta inicializar com credenciais padrão
+                else:
+                    # Tenta inicializar com credenciais padrão (Google Cloud)
+                    logger.info("Firebase: tentando credenciais padrão do ambiente")
                     firebase_admin.initialize_app(options={
                         'projectId': settings.firebase_project_id
                     })
             
             self._db = firestore.client()
-            logger.info("Firebase inicializado com sucesso")
+            logger.info("✅ Firebase inicializado com sucesso")
         except Exception as e:
-            logger.warning(f"Firebase não disponível: {e}")
-            logger.warning("Executando em modo MOCK (dados simulados)")
+            logger.warning(f"⚠️ Firebase não disponível: {e}")
+            logger.warning("🔶 Executando em modo MOCK (dados simulados)")
             self._mock_mode = True
             self._db = None
     
