@@ -109,36 +109,34 @@ async def whatsapp_webhook(
         logger.info(f"📤 Resposta para {From}: {response_text[:100]}...")
         
         # Envia resposta via Twilio (opcional, pode usar TwiML)
-        # twilio_service.send_message(From, response_text)
-        
-        # Retorna TwiML para resposta automática
-        twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>{escape_xml(response_text)}</Message>
-</Response>"""
-        
-        return Response(
-            content=twiml_response,
+        twiml = MessagingResponse()
+        twiml.message(response_text)
+
+        return PlainTextResponse(
+            content=str(twiml),
             status_code=200,
-            headers={
-                "Content-Type": "text/xml; charset=utf-8"
-            }
+            media_type="text/xml"
         )
         
     except Exception as e:
-        logger.error(f"❌ Erro ao processar mensagem: {e}", exc_info=True)
-        
-        # Resposta de erro amigável
-        error_response = """<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>Ops! Ocorreu um erro. Por favor, tente novamente em alguns instantes. 😅</Message>
-</Response>"""
-        
-        return Response(
-            content=error_response,
-            media_type="application/xml"
+        # 🔴 LOG COMPLETO PRA DEBUG
+        logger.error(
+            f"❌ Erro ao processar mensagem de {From}: {e}",
+            exc_info=True
         )
 
+        # 🟢 RESPOSTA AMIGÁVEL (TwiML VÁLIDO)
+        twiml = MessagingResponse()
+        twiml.message(
+            "Ops 😅 tive um probleminha aqui. "
+            "Pode tentar novamente em alguns instantes?"
+        )
+
+        return PlainTextResponse(
+            content=str(twiml),
+            status_code=200,          # ⚠️ IMPORTANTE: ainda 200
+            media_type="text/xml"
+        )
 
 @app.post("/webhook/whatsapp/status")
 async def whatsapp_status_webhook(request: Request):
