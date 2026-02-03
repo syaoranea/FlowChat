@@ -7,7 +7,6 @@ from typing import Optional
 from app.config import get_settings
 from app.models.conversation import ConversationState, Etapa, Fluxo
 from app.services.firebase_service import firebase_service
-from app.services.twilio_service import twilio_service
 from app.handlers.orcamento_handler import OrcamentoHandler
 from app.handlers.compras_handler import ComprasHandler
 from app.handlers.posvenda_handler import PosVendaHandler
