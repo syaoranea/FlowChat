@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        # Ignora campos extras do .env (útil para migração Twilio -> Z-API)
+        # Permite que variáveis antigas como TWILIO_* sejam ignoradas sem erro
+        extra = "ignore"
 
 
 @lru_cache()

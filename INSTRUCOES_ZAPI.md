@@ -212,6 +212,60 @@ curl http://localhost:8000/zapi/status
 
 ---
 
+## 🔄 Migração do Twilio para Z-API
+
+Se você estava usando o Twilio anteriormente, siga estes passos para migrar:
+
+### Passo 1: Remover variáveis do Twilio
+
+**Localmente (arquivo `.env`):**
+
+Remova ou comente as seguintes variáveis do seu arquivo `.env`:
+
+```bash
+# Remova ou comente estas linhas:
+# TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+```
+
+**Na Vercel:**
+
+1. Acesse o painel da Vercel
+2. Vá em **Settings** > **Environment Variables**
+3. Remova as variáveis:
+   - `TWILIO_ACCOUNT_SID`
+   - `TWILIO_AUTH_TOKEN`
+   - `TWILIO_WHATSAPP_FROM`
+
+### Passo 2: Adicionar variáveis Z-API
+
+**Localmente (arquivo `.env`):**
+
+```bash
+ZAPI_INSTANCE_ID=seu_instance_id
+ZAPI_TOKEN=seu_token
+ZAPI_CLIENT_TOKEN=seu_client_token
+```
+
+**Na Vercel:**
+
+Adicione as mesmas variáveis em **Settings** > **Environment Variables**.
+
+### Passo 3: Fazer novo deploy
+
+Na Vercel, faça um novo deploy para aplicar as mudanças:
+
+```bash
+vercel --prod
+```
+
+### Nota sobre compatibilidade
+
+A aplicação está configurada para ignorar variáveis extras no arquivo `.env` (como as antigas variáveis do Twilio). Isso facilita a migração gradual, mas é recomendado remover as variáveis não utilizadas para manter o ambiente limpo.
+
+---
+
 ## 📚 Recursos Úteis
 
 - [Documentação Z-API](https://developer.z-api.io/)
